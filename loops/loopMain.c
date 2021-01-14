@@ -1,4 +1,5 @@
 #include <tamtypes.h>
+#include <stdio.h>
 
 static void Kputc(u8 c) {
     while (*((u32*)0x1000f130) & 0x8000) { __asm__ ("nop\nnop\nnop\n"); }
