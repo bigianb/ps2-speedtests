@@ -1,38 +1,36 @@
 #include <tamtypes.h>
 #include <stdio.h>
 
-static void Kputc(u8 c) {
-    while (*((u32*)0x1000f130) & 0x8000) { __asm__ ("nop\nnop\nnop\n"); }
-    
-	*((u8*)0x1000f180) = c;
-}
-
-static void Kputs(u8 *s) {
-	while (*s != 0) {
-		Kputc(*s++);
-	}
-}
+int data[256];
 
 void doTest()
 {
-
+	int i, j;
+	// Lots of writes to normal memory.
+	for (j=0; j<1000000; ++j){
+		for(i=0; i<255; ++i){
+			data[i] = i;
+		}
+	}
 }
+
+#define CLOCK_ADDR 0x10001900
+#define CLOCKS_PER_SEC_ADDR 0x10001904
+
 
 int main()
 {
 	u32 startTime, endTime, clocksPerSec;
-	u8 buf[256];
 
-	Kputs("Memory test\n");
+	printf("Memory test\n");
 
-	startTime = *((u32*)0x10001900);
+	startTime = *((u32*)CLOCK_ADDR);
 
 	doTest();
 
-	endTime = *((u32*)0x10001900);
-	clocksPerSec = *((u32*)0x10001904);
+	endTime = *((u32*)CLOCK_ADDR);
+	clocksPerSec = *((u32*)CLOCKS_PER_SEC_ADDR);
 
-	sprintf(buf, "start=%d, end=%d, clocksPerSec=%d\n", startTime, endTime, clocksPerSec);
-	Kputs(buf);
+	printf("start=%d, end=%d, clocksPerSec=%d\n", startTime, endTime, clocksPerSec);
 	return 0;
 }

@@ -10,6 +10,9 @@ all: $(EE_BIN)
 clean:
 	rm -f *.o $(ELF)
 
+# no optimisation
+EE_CFLAGS := -O0
+
 include $(PS2SDK)/Defs.make
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
