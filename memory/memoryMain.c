@@ -1,9 +1,10 @@
 #include <tamtypes.h>
 #include <stdio.h>
 
-int data[256];
+int data[255];
 
-void doTest()
+// Write 255 million words in a tight loop.
+void writeWordsInLoop()
 {
 	int i, j;
 	// Lots of writes to normal memory.
@@ -14,23 +15,51 @@ void doTest()
 	}
 }
 
+void writeWordsInUnrolledLoop()
+{
+	int i, j;
+	// Lots of writes to normal memory.
+	for (j=0; j<1000000; ++j){
+		for(i=0; i<255;){
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+			data[i] = i; i++; data[i] = i; i++; data[i] = i; i++; data[i] = i; i++;
+		}
+	}
+}
+
 #define CLOCK_ADDR 0x10001900
 #define CLOCKS_PER_SEC_ADDR 0x10001904
 
 
-int main()
+void timeFunc(const char* name, void (*fun)())
 {
 	u32 startTime, endTime, clocksPerSec;
-
-	printf("Memory test\n");
-
+	fun(); // warm-up
+	printf("%s\n", name);
 	startTime = *((u32*)CLOCK_ADDR);
-
-	doTest();
-
+	fun();
 	endTime = *((u32*)CLOCK_ADDR);
 	clocksPerSec = *((u32*)CLOCKS_PER_SEC_ADDR);
+	printf("elapsed clocks=%d, clocksPerSec=%d\n", endTime-startTime, clocksPerSec);
+}
 
-	printf("start=%d, end=%d, clocksPerSec=%d\n", startTime, endTime, clocksPerSec);
+int main()
+{
+	timeFunc("Write Words in loop", writeWordsInLoop);
+	timeFunc("Write Words in unrolled loop", writeWordsInUnrolledLoop);
 	return 0;
 }
