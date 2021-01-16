@@ -12,7 +12,8 @@ A simple scheme is used which wires up clock to 2 memory addresses:
 | 0x10001904 | returns CLOCKS_PER_SEC |
 
 For Play! the following branch can be used: https://github.com/bigianb/Play-/tree/clock
-For PCSX2 ... TODO
+
+For PCSX2, the following branch can be used: https://github.com/bigianb/pcsx2/tree/clock
 
 ## Setup
 Refer to [setup.md](setup.md) for details on how to configure a suitable compilation environment.
