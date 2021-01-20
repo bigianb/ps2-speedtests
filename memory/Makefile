@@ -8,11 +8,8 @@ all: $(EE_BIN)
 
 .PHONY: clean
 clean:
-	rm -f *.o $(ELF)
-
-# no optimisation
-EE_CFLAGS := -O0
+	rm -f *.o $(EE_BIN)
 
 include $(PS2SDK)/Defs.make
-include $(PS2SDK)/samples/Makefile.pref
-include $(PS2SDK)/samples/Makefile.eeglobal
+include ../make/Makefile.pref
+include ../make/Makefile.eeglobal

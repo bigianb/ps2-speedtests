@@ -6,7 +6,7 @@ windows based emulator such as PCSX2.
 ```
 sudo apt-get update
 sudo apt upgrade -y
-sudo apt-get install gcc g++ make texinfo gettext bison flex libmpc-dev zlib1g-dev
+sudo apt-get install gcc g++ make texinfo gettext bison flex libmpc-dev zlib1g-dev mkisofs
 
 git clone https://github.com/ps2dev/ps2dev.git
 

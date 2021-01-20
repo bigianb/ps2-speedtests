@@ -1,6 +1,6 @@
 
 TGTDIR := build
-DIRS = loops memory
+DIRS = loops memory cdread
 
 .PHONY: all clean
 
