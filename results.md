@@ -24,6 +24,12 @@
 | PCSX2-32 16-1-21 | 77025  |
 | Play master 15-1-21 | 774 |
 
+## complex/fizzbuzz 500000 times
+
+| Build | clocks |
+| ----- | ------ |
+| PCSX2-32 16-1-21 | 178  |
+| Play master 15-1-21 | 90 |
 
 # Dell XPS 15 laptop, i7-4702HQ CPU @ 2.20GHz
 
