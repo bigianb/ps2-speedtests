@@ -1,5 +1,8 @@
 build
+Release
 *.o
+*.obj
 .vscode
 *.elf
 *.BIN
+.vs
