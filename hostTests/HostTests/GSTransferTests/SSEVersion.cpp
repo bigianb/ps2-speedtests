@@ -18,7 +18,7 @@ enum COLUMNSIZE
 	COLUMNSIZE = 64,
 };
 
-struct STORAGEPSMT8
+struct STORAGEPSMT8x
 {
 	enum PAGEWIDTH
 	{
@@ -127,9 +127,9 @@ private:
 };
 
 template <>
-inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
+inline void CPixelIndexor<STORAGEPSMT8x>::BuildPageOffsetTable()
 {
-	typedef STORAGEPSMT8 Storage;
+	typedef STORAGEPSMT8x Storage;
 
 	for (uint32 y = 0; y < Storage::PAGEHEIGHT; y++)
 	{
@@ -161,7 +161,7 @@ inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
 	}
 }
 
-typedef CPixelIndexor<STORAGEPSMT8> CPixelIndexorPSMT8;
+typedef CPixelIndexor<STORAGEPSMT8x> CPixelIndexorPSMT8;
 
 template <typename Storage>
 bool CPixelIndexor<Storage>::m_pageOffsetsInitialized = false;
@@ -172,7 +172,7 @@ uint32 CPixelIndexor<Storage>::m_pageOffsets[Storage::PAGEHEIGHT][Storage::PAGEW
 static
 uint8* m_pCvtBuffer;
 
-const int STORAGEPSMT8::m_nBlockSwizzleTable[4][8] =
+const int STORAGEPSMT8x::m_nBlockSwizzleTable[4][8] =
 {
 	{	0,	1,	4,	5,	16,	17,	20,	21	},
 	{	2,	3,	6,	7,	18,	19,	22,	23	},
@@ -180,7 +180,7 @@ const int STORAGEPSMT8::m_nBlockSwizzleTable[4][8] =
 	{	10,	11,	14,	15,	26,	27,	30,	31	},
 };
 
-const int STORAGEPSMT8::m_nColumnWordTable[2][2][8] =
+const int STORAGEPSMT8x::m_nColumnWordTable[2][2][8] =
 {
 	{
 		{	0,	1,	4,	5,	8,	9,	12,	13,	},
@@ -195,15 +195,21 @@ const int STORAGEPSMT8::m_nColumnWordTable[2][2][8] =
 template <typename IndexorType>
 void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
+	// Assume transfer is aligned to block boundaries (16 x 16 pixels)
 	IndexorType indexor(pRam, bufPtr, bufWidth);
 
 	uint8* dst = m_pCvtBuffer;
-	for (unsigned int y = 0; y < texHeight; y++)
+	for (unsigned int y = 0; y < texHeight; y += 16)
 	{
-		for (unsigned int x = 0; x < texWidth; x++)
+		for (unsigned int x = 0; x < texWidth; x += 16)
 		{
-			uint8 pixel = indexor.GetPixel(texX + x, texY + y);
-			dst[x] = pixel;
+			// process an entire 16x16 block.
+			// A block is 16x4 pixels and they stack vertically in a block
+			for (unsigned int coly = 0; coly < 16; y += 4) {
+				// TODO
+				uint8 pixel = indexor.GetPixel(texX + x, texY + y);
+				dst[x] = pixel;
+			}
 		}
 
 		dst += texWidth;
@@ -221,7 +227,7 @@ enum CVTBUFFERSIZE
 	CVTBUFFERSIZE = 0x800000,
 };
 
-void runBaseline()
+void runSSEVersion()
 {
 	uint8* pRAM = new uint8[RAMSIZE];
 	m_pCvtBuffer = new uint8[CVTBUFFERSIZE];
@@ -231,4 +237,24 @@ void runBaseline()
 	delete[] pRAM;
 	delete[] m_pCvtBuffer;
 }
+
+/*
+* Notes on GS Local memory
+* 
+Page 8k
+Block 256 bytes
+Column 64 bytes (512 bits)
+
+1 page = 32 blocks
+1 block = 4 columns
+
+PSMCT32 page 64x32,   block 8x8,   column 8x2
+PSMCT16 page 64x64,   block 16x8,  column 16x2
+PSMT8   page 128x128, block 16x16, column 16x4
+PSMT4   page 128x64 , block 32x16, column 32x4
+
+PSMT8
+		4 columns per block, stacked vertically.
+		
+*/
 
