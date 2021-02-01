@@ -18,6 +18,11 @@ enum COLUMNSIZE
 	COLUMNSIZE = 64,
 };
 
+enum RAMSIZE
+{
+	RAMSIZE = 0x00400000,
+};
+
 struct STORAGEPSMT8
 {
 	enum PAGEWIDTH
@@ -193,10 +198,7 @@ void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, u
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
-enum RAMSIZE
-{
-	RAMSIZE = 0x00400000,
-};
+
 enum CVTBUFFERSIZE
 {
 	CVTBUFFERSIZE = 0x800000,
