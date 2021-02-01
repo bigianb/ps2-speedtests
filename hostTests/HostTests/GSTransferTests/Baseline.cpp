@@ -99,25 +99,6 @@ private:
 		// not used in this case as specialisation wins below
 	}
 
-	uint32 GetColumnAddress(unsigned int& nX, unsigned int& nY)
-	{
-		uint32 nPageNum = (nX / Storage::PAGEWIDTH) + (nY / Storage::PAGEHEIGHT) * (m_nWidth * 64) / Storage::PAGEWIDTH;
-
-		nX %= Storage::PAGEWIDTH;
-		nY %= Storage::PAGEHEIGHT;
-
-		uint32 nBlockNum = Storage::m_nBlockSwizzleTable[nY / Storage::BLOCKHEIGHT][nX / Storage::BLOCKWIDTH];
-
-		nX %= Storage::BLOCKWIDTH;
-		nY %= Storage::BLOCKHEIGHT;
-
-		uint32 nColumnNum = (nY / Storage::COLUMNHEIGHT);
-
-		nY %= Storage::COLUMNHEIGHT;
-
-		return (m_nPointer + (nPageNum * PAGESIZE) + (nBlockNum * BLOCKSIZE) + (nColumnNum * COLUMNSIZE)) & (CGSHandler::RAMSIZE - 1);
-	}
-
 	uint32 m_nPointer;
 	uint32 m_nWidth;
 	uint8* m_pMemory;
