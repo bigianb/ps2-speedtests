@@ -115,6 +115,8 @@ private:
 template <>
 inline void CPixelIndexor<STORAGEPSMT8x>::BuildPageOffsetTable()
 {
+	if (m_pageOffsetsInitialized) return;
+
 	typedef STORAGEPSMT8x Storage;
 
 	for (uint32 y = 0; y < Storage::PAGEHEIGHT; y++)
@@ -145,6 +147,7 @@ inline void CPixelIndexor<STORAGEPSMT8x>::BuildPageOffsetTable()
 			m_pageOffsets[y][x] = offset;
 		}
 	}
+	m_pageOffsetsInitialized = true;
 }
 
 typedef CPixelIndexor<STORAGEPSMT8x> CPixelIndexorPSMT8;
@@ -182,7 +185,7 @@ template <typename IndexorType>
 void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
 	// Assume transfer is aligned to block boundaries (16 x 16 pixels)
-	IndexorType indexor(pRam, bufPtr, bufWidth);
+	//IndexorType indexor(pRam, bufPtr, bufWidth);
 
 	uint8* dst = m_pCvtBuffer;
 	for (unsigned int y = 0; y < texHeight; y += 16)
@@ -191,10 +194,10 @@ void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, u
 		{
 			// process an entire 16x16 block.
 			// A block is 16x4 pixels and they stack vertically in a block
-			for (unsigned int coly = 0; coly < 16; y += 4) {
+			for (unsigned int coly = 0; coly < 16; coly += 4) {
 				// TODO
-				uint8 pixel = indexor.GetPixel(texX + x, texY + y);
-				dst[x] = pixel;
+				//uint8 pixel = indexor.GetPixel(texX + x, texY + y);
+				//dst[x] = pixel;
 			}
 		}
 

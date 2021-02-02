@@ -115,6 +115,7 @@ private:
 template <>
 inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
 {
+	if (m_pageOffsetsInitialized) return;
 	typedef STORAGEPSMT8 Storage;
 
 	for (uint32 y = 0; y < Storage::PAGEHEIGHT; y++)
@@ -145,6 +146,7 @@ inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
 			m_pageOffsets[y][x] = offset;
 		}
 	}
+	m_pageOffsetsInitialized = true;
 }
 
 typedef CPixelIndexor<STORAGEPSMT8> CPixelIndexorPSMT8;
