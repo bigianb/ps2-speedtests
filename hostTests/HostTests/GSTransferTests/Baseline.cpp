@@ -157,9 +157,6 @@ bool CPixelIndexor<Storage>::m_pageOffsetsInitialized = false;
 template <typename Storage>
 uint32 CPixelIndexor<Storage>::m_pageOffsets[Storage::PAGEHEIGHT][Storage::PAGEWIDTH];
 
-static
-uint8* m_pCvtBuffer;
-
 const int STORAGEPSMT8::m_nBlockSwizzleTable[4][8] =
 {
 	{	0,	1,	4,	5,	16,	17,	20,	21	},
@@ -181,11 +178,11 @@ const int STORAGEPSMT8::m_nColumnWordTable[2][2][8] =
 };
 
 template <typename IndexorType>
-void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
+void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
 	IndexorType indexor(pRam, bufPtr, bufWidth);
 
-	uint8* dst = m_pCvtBuffer;
+	uint8* dst = pCvtBuffer;
 	for (unsigned int y = 0; y < texHeight; y++)
 	{
 		for (unsigned int x = 0; x < texWidth; x++)
@@ -200,20 +197,10 @@ void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, u
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
-
-enum CVTBUFFERSIZE
+void runBaseline(uint8* pCvtBuffer, uint8* pRAM)
 {
-	CVTBUFFERSIZE = 0x800000,
-};
-
-void runBaseline()
-{
-	uint8* pRAM = new uint8[RAMSIZE];
-	m_pCvtBuffer = new uint8[CVTBUFFERSIZE];
 	for (int i = 0; i < 10000; ++i) {
-		TexUpdater_Psm48<CPixelIndexorPSMT8>(pRAM, 0, 1024, 0, 0, 512, 512);
+		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024, 0, 0, 512, 512);
 	}
-	delete[] pRAM;
-	delete[] m_pCvtBuffer;
 }
 

@@ -181,30 +181,68 @@ const int STORAGEPSMT8x::m_nColumnWordTable[2][2][8] =
 	},
 };
 
+inline
+void convertColumn8Slow(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+	// not meant to be faster ... just to clarify what the transform is to help
+	// implementing the SSE code.
+	const uint32* src32 = (uint32*)src;
+	uint32* dest32 = (uint32*)dest;
+
+	const uint32 s0 = src32[0];
+	const uint32 s1 = src32[1];
+	const uint32 s4 = src32[4];
+	const uint32 s5 = src32[5];
+
+	uint32 d = s0 & 0xFF | ((s1 & 0xFF) << 8) | ((s4 & 0xFF) << 16) | ((s5 & 0xFF) << 24);
+	dest32[0] = d;
+
+	const uint32 s8 = src32[8];
+	const uint32 s9 = src32[9];
+	const uint32 s12 = src32[12];
+	const uint32 s13 = src32[13];
+	d = s8 & 0xFF | ((s9 & 0xFF) << 8) | ((s12 & 0xFF) << 16) | ((s13 & 0xFF) << 24);
+	dest32[1] = d;
+
+	d = ((s0 >> 8) & 0xFF) | ((s1 & 0xFF00)) | ((s4 & 0xFF00) << 8) | ((s5 & 0xFF00) << 16);
+	dest32[2] = d;
+	d = ((s8 >> 8) & 0xFF) | ((s9 & 0xFF00)) | ((s12 & 0xFF00) << 8) | ((s13 & 0xFF00) << 16);
+	dest32[3] = d;
+
+	// rubbish but representative timing.
+	for (int x = 0; x < 12; ++x) {
+		d = ((s8 >> 8) & 0xFF) | ((s9 & 0xFF00)) | ((s12 & 0xFF00) << 8) | ((s13 & 0xFF00) << 16);
+		dest32[3] = d;
+	}
+}
+
 template <typename IndexorType>
-void TexUpdater_Psm48(uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
+void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
 	// Assume transfer is aligned to block boundaries (16 x 16 pixels)
-	//IndexorType indexor(pRam, bufPtr, bufWidth);
+	IndexorType indexor(pRam, bufPtr, bufWidth);
 
-	uint8* dst = m_pCvtBuffer;
+	uint8* dst = pCvtBuffer;
 	for (unsigned int y = 0; y < texHeight; y += 16)
 	{
 		for (unsigned int x = 0; x < texWidth; x += 16)
 		{
+			uint8* colDst = dst;
+			uint8* src = indexor.GetPixelAddress(texX + x, texY + y);
+
 			// process an entire 16x16 block.
-			// A block is 16x4 pixels and they stack vertically in a block
+			// A column (64 bytes) is 16x4 pixels and they stack vertically in a block
+			
+			// we could read an entire column in 4 xmm registers or ARM NEON registers.
+			int colNum = 0;
 			for (unsigned int coly = 0; coly < 16; coly += 4) {
-				// TODO
-				//uint8 pixel = indexor.GetPixel(texX + x, texY + y);
-				//dst[x] = pixel;
+				convertColumn8Slow(colDst + x, texWidth, src, colNum++);
+				colDst += 4;
 			}
 		}
 
-		dst += texWidth;
+		dst += texWidth * 16;
 	}
-
-	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
 
@@ -213,15 +251,11 @@ enum CVTBUFFERSIZE
 	CVTBUFFERSIZE = 0x800000,
 };
 
-void runSSEVersion()
+void runSSEVersion(uint8* pCvtBuffer, uint8* pRAM)
 {
-	uint8* pRAM = new uint8[RAMSIZE];
-	m_pCvtBuffer = new uint8[CVTBUFFERSIZE];
 	for (int i = 0; i < 10000; ++i) {
-		TexUpdater_Psm48<CPixelIndexorPSMT8>(pRAM, 0, 1024, 0, 0, 512, 512);
+		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024, 0, 0, 512, 512);
 	}
-	delete[] pRAM;
-	delete[] m_pCvtBuffer;
 }
 
 /*

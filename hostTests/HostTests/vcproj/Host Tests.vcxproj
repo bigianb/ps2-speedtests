@@ -115,6 +115,7 @@
   <ItemGroup>
     <ClCompile Include="..\gstransfertests\Baseline.cpp" />
     <ClCompile Include="..\gstransfertests\GSTransferTests.cpp" />
+    <ClCompile Include="..\GSTransferTests\SSEVersion.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\gstransfertests\GSTransferTests.h" />
