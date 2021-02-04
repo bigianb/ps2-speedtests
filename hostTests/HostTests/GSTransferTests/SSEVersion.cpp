@@ -3,6 +3,9 @@
 typedef unsigned int uint32;
 typedef unsigned char uint8;
 
+#include <xmmintrin.h>
+#include <emmintrin.h>
+
 enum PAGESIZE
 {
 	PAGESIZE = 8192,
@@ -126,25 +129,25 @@ inline void CPixelIndexor<STORAGEPSMT8x>::BuildPageOffsetTable()
 			uint32 workX = x;
 			uint32 workY = y;
 
-			uint32 blockNum = Storage::m_nBlockSwizzleTable[workY / Storage::BLOCKHEIGHT][workX / Storage::BLOCKWIDTH];
+uint32 blockNum = Storage::m_nBlockSwizzleTable[workY / Storage::BLOCKHEIGHT][workX / Storage::BLOCKWIDTH];
 
-			workX %= Storage::BLOCKWIDTH;
-			workY %= Storage::BLOCKHEIGHT;
+workX %= Storage::BLOCKWIDTH;
+workY %= Storage::BLOCKHEIGHT;
 
-			uint32 columnNum = (workY / Storage::COLUMNHEIGHT);
+uint32 columnNum = (workY / Storage::COLUMNHEIGHT);
 
-			workY %= Storage::COLUMNHEIGHT;
+workY %= Storage::COLUMNHEIGHT;
 
-			uint32 table = (workY & 0x02) >> 1;
-			uint32 byte = (workX & 0x08) >> 2;
-			byte += (workY & 0x02) >> 1;
-			table ^= ((y / Storage::COLUMNHEIGHT) & 1);
+uint32 table = (workY & 0x02) >> 1;
+uint32 byte = (workX & 0x08) >> 2;
+byte += (workY & 0x02) >> 1;
+table ^= ((y / Storage::COLUMNHEIGHT) & 1);
 
-			workX &= 0x7;
-			workY &= 0x1;
+workX &= 0x7;
+workY &= 0x1;
 
-			uint32 offset = (blockNum * BLOCKSIZE) + (columnNum * COLUMNSIZE) + (Storage::m_nColumnWordTable[table][workY][workX] * 4) + byte;
-			m_pageOffsets[y][x] = offset;
+uint32 offset = (blockNum * BLOCKSIZE) + (columnNum * COLUMNSIZE) + (Storage::m_nColumnWordTable[table][workY][workX] * 4) + byte;
+m_pageOffsets[y][x] = offset;
 		}
 	}
 	m_pageOffsetsInitialized = true;
@@ -184,36 +187,62 @@ const int STORAGEPSMT8x::m_nColumnWordTable[2][2][8] =
 inline
 void convertColumn8Slow(uint8* dest, const int destStride, uint8* src, int colNum)
 {
-	// not meant to be faster ... just to clarify what the transform is to help
-	// implementing the SSE code.
-	const uint32* src32 = (uint32*)src;
-	uint32* dest32 = (uint32*)dest;
+	__m128i* mSrc = (__m128i*)src;
 
-	const uint32 s0 = src32[0];
-	const uint32 s1 = src32[1];
-	const uint32 s4 = src32[4];
-	const uint32 s5 = src32[5];
+	__m128i a = mSrc[0];
+	__m128i b = mSrc[1];
+	__m128i c = mSrc[2];
+	__m128i d = mSrc[3];
 
-	uint32 d = s0 & 0xFF | ((s1 & 0xFF) << 8) | ((s4 & 0xFF) << 16) | ((s5 & 0xFF) << 24);
-	dest32[0] = d;
+	__m128i* mdest = (__m128i*)dest;
 
-	const uint32 s8 = src32[8];
-	const uint32 s9 = src32[9];
-	const uint32 s12 = src32[12];
-	const uint32 s13 = src32[13];
-	d = s8 & 0xFF | ((s9 & 0xFF) << 8) | ((s12 & 0xFF) << 16) | ((s13 & 0xFF) << 24);
-	dest32[1] = d;
+	__m128i temp_a = a;
+	__m128i temp_c = c;
 
-	d = ((s0 >> 8) & 0xFF) | ((s1 & 0xFF00)) | ((s4 & 0xFF00) << 8) | ((s5 & 0xFF00) << 16);
-	dest32[2] = d;
-	d = ((s8 >> 8) & 0xFF) | ((s9 & 0xFF00)) | ((s12 & 0xFF00) << 8) | ((s13 & 0xFF00) << 16);
-	dest32[3] = d;
+	a = _mm_unpacklo_epi8(temp_a, b);
+	c = _mm_unpackhi_epi8(temp_a, b);
+	b = _mm_unpacklo_epi8(temp_c, d);
+	d = _mm_unpackhi_epi8(temp_c, d);
 
-	// rubbish but representative timing.
-	for (int x = 0; x < 12; ++x) {
-		d = ((s8 >> 8) & 0xFF) | ((s9 & 0xFF00)) | ((s12 & 0xFF00) << 8) | ((s13 & 0xFF00) << 16);
-		dest32[3] = d;
+	temp_a = a;
+	temp_c = c;
+
+	a = _mm_unpacklo_epi16(temp_a, b);
+	c = _mm_unpackhi_epi16(temp_a, b);
+	b = _mm_unpacklo_epi16(temp_c, d);
+	d = _mm_unpackhi_epi16(temp_c, d);
+
+	temp_a = a;
+	__m128i temp_b = b;
+
+	a = _mm_unpacklo_epi8(temp_a, c);
+	b = _mm_unpackhi_epi8(temp_a, c);
+	c = _mm_unpacklo_epi8(temp_b, d);
+	d = _mm_unpackhi_epi8(temp_b, d);
+
+	temp_a = a;
+	temp_c = c;
+
+	a = _mm_unpacklo_epi64(temp_a, b);
+	c = _mm_unpackhi_epi64(temp_a, b);
+	b = _mm_unpacklo_epi64(temp_c, d);
+	d = _mm_unpackhi_epi64(temp_c, d);
+
+	if ((colNum & 1) == 0){
+		c = _mm_shuffle_epi32(c, _MM_SHUFFLE(2, 3, 0, 1));
+		d = _mm_shuffle_epi32(d, _MM_SHUFFLE(2, 3, 0, 1));
 	}
+	else {
+		a = _mm_shuffle_epi32(a, _MM_SHUFFLE(2, 3, 0, 1));
+		b = _mm_shuffle_epi32(b, _MM_SHUFFLE(2, 3, 0, 1));
+	}
+
+	int mStride = destStride / 16;
+
+	mdest[0] = a;
+	mdest[mStride] = b;
+	mdest[mStride*2] = c;
+	mdest[mStride*3] = d;
 }
 
 template <typename IndexorType>
@@ -237,7 +266,8 @@ void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 			int colNum = 0;
 			for (unsigned int coly = 0; coly < 16; coly += 4) {
 				convertColumn8Slow(colDst + x, texWidth, src, colNum++);
-				colDst += 4;
+				src += 64;
+				colDst += texWidth * 4;
 			}
 		}
 
@@ -251,10 +281,10 @@ enum CVTBUFFERSIZE
 	CVTBUFFERSIZE = 0x800000,
 };
 
-void runSSEVersion(uint8* pCvtBuffer, uint8* pRAM)
+void runSSEVersion(uint8* pCvtBuffer, uint8* pRAM, int texW, int texH)
 {
 	for (int i = 0; i < 10000; ++i) {
-		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024, 0, 0, 512, 512);
+		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024/64, 0, 0, texW, texH);
 	}
 }
 

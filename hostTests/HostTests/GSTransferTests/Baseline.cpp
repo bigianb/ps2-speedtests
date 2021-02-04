@@ -197,10 +197,10 @@ void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
-void runBaseline(uint8* pCvtBuffer, uint8* pRAM)
+void runBaseline(uint8* pCvtBuffer, uint8* pRAM, int texW, int texH)
 {
 	for (int i = 0; i < 10000; ++i) {
-		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024, 0, 0, 512, 512);
+		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024/64, 0, 0, texW, texH);
 	}
 }
 
