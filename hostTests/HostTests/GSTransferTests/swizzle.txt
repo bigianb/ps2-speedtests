@@ -1,0 +1,29 @@
+Notes on what we are doing for the 8 bit case, and how we can do it on arm.
+
+Think of the data as 32 bit words of ABGR stored in little endian.
+
+The bytes for a column of data would then be as follows
+(where A, B, C, D prefix shows the row)
+
+AR0 AG0 AB0 AA0 AR1 AG1 AB1 AA1 AR2 AG2 AB2 AA2 AR3 AG3 AB3 AA3
+BR0 BG0 BB0 BA0 BR1 ...
+CR0 ...
+DR0 ...
+
+The 
+First 2 rows are R,B second 2 are G,A
+
+AR0 AR1 BR0 BR1 CR0 CR1 DR0 DR1 AB0 AB1 BB0 BB1 CB0 CB1 DB0 DB1
+AR2 AR3 BR2 BR3 CR2 CR3 DR2 DR3 AB2 AB3 BB2 BB3 CB2 CB3 DB2 DB3
+
+step 1, read RGBA into 4 128 bit registers
+https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/coding-for-neon---part-1-load-and-stores
+
+AR0 AR1 AR2 AR3 BR0 BR1 BR2 BR3 CR0 CR1 CR2 CR3 DR0 DR1 DR2 DR3
+AG0 AG1 AG2 AG3 BG0 BG1 BG2 BG3 CG0 CG1 CG2 CG3 DG0 DG1 DG2 DG3
+AB0 AB1 AB2 AB3 BB0 BB1 BB2 BB3 CB0 CB1 CB2 CB3 DB0 DB1 DB2 DB3
+AA0 AA1 AA2 AA3 BA0 BA1 BA2 BA3 CA0 CA1 CA2 CA3 DA0 DA1 DA2 DA3
+
+https://community.arm.com/developer/tools-software/oss-platforms/b/android-blog/posts/arm-neon-programming-quick-reference?_ga=2.42884012.807016356.1612891499-962804530.1612891499
+
+
