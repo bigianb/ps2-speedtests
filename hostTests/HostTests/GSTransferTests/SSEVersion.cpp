@@ -3,9 +3,6 @@
 typedef unsigned int uint32;
 typedef unsigned char uint8;
 
-#include <xmmintrin.h>
-#include <emmintrin.h>
-
 enum PAGESIZE
 {
 	PAGESIZE = 8192,
@@ -129,25 +126,25 @@ inline void CPixelIndexor<STORAGEPSMT8x>::BuildPageOffsetTable()
 			uint32 workX = x;
 			uint32 workY = y;
 
-uint32 blockNum = Storage::m_nBlockSwizzleTable[workY / Storage::BLOCKHEIGHT][workX / Storage::BLOCKWIDTH];
+			uint32 blockNum = Storage::m_nBlockSwizzleTable[workY / Storage::BLOCKHEIGHT][workX / Storage::BLOCKWIDTH];
 
-workX %= Storage::BLOCKWIDTH;
-workY %= Storage::BLOCKHEIGHT;
+			workX %= Storage::BLOCKWIDTH;
+			workY %= Storage::BLOCKHEIGHT;
 
-uint32 columnNum = (workY / Storage::COLUMNHEIGHT);
+			uint32 columnNum = (workY / Storage::COLUMNHEIGHT);
 
-workY %= Storage::COLUMNHEIGHT;
+			workY %= Storage::COLUMNHEIGHT;
 
-uint32 table = (workY & 0x02) >> 1;
-uint32 byte = (workX & 0x08) >> 2;
-byte += (workY & 0x02) >> 1;
-table ^= ((y / Storage::COLUMNHEIGHT) & 1);
+			uint32 table = (workY & 0x02) >> 1;
+			uint32 byte = (workX & 0x08) >> 2;
+			byte += (workY & 0x02) >> 1;
+			table ^= ((y / Storage::COLUMNHEIGHT) & 1);
 
-workX &= 0x7;
-workY &= 0x1;
+			workX &= 0x7;
+			workY &= 0x1;
 
-uint32 offset = (blockNum * BLOCKSIZE) + (columnNum * COLUMNSIZE) + (Storage::m_nColumnWordTable[table][workY][workX] * 4) + byte;
-m_pageOffsets[y][x] = offset;
+			uint32 offset = (blockNum * BLOCKSIZE) + (columnNum * COLUMNSIZE) + (Storage::m_nColumnWordTable[table][workY][workX] * 4) + byte;
+			m_pageOffsets[y][x] = offset;
 		}
 	}
 	m_pageOffsetsInitialized = true;
@@ -184,8 +181,38 @@ const int STORAGEPSMT8x::m_nColumnWordTable[2][2][8] =
 	},
 };
 
+#ifdef __arm__
+
+#include <arm_neon.h>
+
 inline
-void convertColumn8Slow(uint8* dest, const int destStride, uint8* src, int colNum)
+void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+	// This sucks in the entire column and de-interleaves it
+	uint8x16x4_t data = vld4q_u8(src);
+
+	// https://developer.arm.com/documentation/den0018/a/NEON-Intrinsics-Reference/Intrinsics-type-conversion/VCOMBINE
+
+	// VCOMBINE joins two 64-bit vectors into a single 128-bit vector. 
+	// The lower half of the output vector contains the elements of the first input vector.
+
+	uint16x8_t row0 = vcombine_u16(vmovn_u32(vreinterpretq_u32_u8(data.val[0])), vmovn_u32(vreinterpretq_u32_u8(data.val[2])));
+	uint16x8_t revr0 = vrev32q_u16(vreinterpretq_u16_u8(data.val[0]));
+	uint16x8_t revr2 = vrev32q_u16(vreinterpretq_u16_u8(data.val[2]));
+	uint16x8_t row1 = vcombine_u16(vmovn_u32(vreinterpretq_u32_u16(revr0)), vmovn_u32(vreinterpretq_u32_u16(revr2)));
+
+	vst1q_u8(dest, vreinterpretq_u8_u16(row0));
+	vst1q_u8(dest+destStride, vreinterpretq_u8_u16(row1));
+	vst1q_u8(dest+2*destStride, data.val[2]);
+	vst1q_u8(dest+3*destStride, data.val[3]);
+}
+#else
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
+
+inline
+void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 {
 	__m128i* mSrc = (__m128i*)src;
 
@@ -245,6 +272,8 @@ void convertColumn8Slow(uint8* dest, const int destStride, uint8* src, int colNu
 	mdest[mStride*3] = d;
 }
 
+#endif
+
 template <typename IndexorType>
 void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
@@ -265,7 +294,7 @@ void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 			// we could read an entire column in 4 xmm registers or ARM NEON registers.
 			int colNum = 0;
 			for (unsigned int coly = 0; coly < 16; coly += 4) {
-				convertColumn8Slow(colDst + x, texWidth, src, colNum++);
+				convertColumn8(colDst + x, texWidth, src, colNum++);
 				src += 64;
 				colDst += texWidth * 4;
 			}

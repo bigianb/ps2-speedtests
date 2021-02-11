@@ -10,7 +10,7 @@ BR0 BG0 BB0 BA0 BR1 ...
 CR0 ...
 DR0 ...
 
-The 
+They need to arranged like this... 
 First 2 rows are R,B second 2 are G,A
 
 AR0 AR1 BR0 BR1 CR0 CR1 DR0 DR1 AB0 AB1 BB0 BB1 CB0 CB1 DB0 DB1
@@ -18,12 +18,23 @@ AR2 AR3 BR2 BR3 CR2 CR3 DR2 DR3 AB2 AB3 BB2 BB3 CB2 CB3 DB2 DB3
 
 step 1, read RGBA into 4 128 bit registers
 https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/coding-for-neon---part-1-load-and-stores
+https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/coding-for-neon/load-and-store-example-rgb-conversion
 
 AR0 AR1 AR2 AR3 BR0 BR1 BR2 BR3 CR0 CR1 CR2 CR3 DR0 DR1 DR2 DR3
 AG0 AG1 AG2 AG3 BG0 BG1 BG2 BG3 CG0 CG1 CG2 CG3 DG0 DG1 DG2 DG3
 AB0 AB1 AB2 AB3 BB0 BB1 BB2 BB3 CB0 CB1 CB2 CB3 DB0 DB1 DB2 DB3
 AA0 AA1 AA2 AA3 BA0 BA1 BA2 BA3 CA0 CA1 CA2 CA3 DA0 DA1 DA2 DA3
 
-https://community.arm.com/developer/tools-software/oss-platforms/b/android-blog/posts/arm-neon-programming-quick-reference?_ga=2.42884012.807016356.1612891499-962804530.1612891499
+Next we want to interleve rows 0 and 2, and 1 and 3
 
+https://community.arm.com/developer/tools-software/oss-platforms/b/android-blog/posts/arm-neon-programming-quick-reference
 
+XTN row0
+XTN2 row1
+
+AR0 AR1 BR0 BR1 CR0 CR1 DR0 DR1 AB0 AB1 BB0 BB1 CB0 CB1 DB0 DB1
+
+REV row0 and row 1
+xtn row0 and xtn2 row1
+
+AR2 AR3 BR2 BR3 CR2 CR3 DR2 DR3 AB2 AB3 BB2 BB3 CB2 CB3 DB2 DB3

@@ -1,6 +1,8 @@
 ﻿// GSTransferTests.cpp : Defines the entry point for the application.
 //
 #include <chrono>
+#include <cstring>
+
 #include "GSTransferTests.h"
 
 using namespace std;
