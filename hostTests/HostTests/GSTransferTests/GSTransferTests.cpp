@@ -2,6 +2,7 @@
 //
 #include <chrono>
 #include <cstring>
+#include <iomanip>
 
 #include "GSTransferTests.h"
 
@@ -23,6 +24,18 @@ enum RAMSIZE
 	RAMSIZE = 0x00400000,
 };
 
+void logData(uint8* pBuf, int w, int h)
+{
+	uint8* p = pBuf;
+	for (int y=0; y<h; ++y){
+		for (int x=0; x<w; ++x){
+			cout << hex << setw(2) << (int)*p << ' ';
+			++p;
+		}
+		cout << endl;
+	}
+}
+
 // ensure output is as expected (matches baseline)
 bool runTest(uint8* pRAM, uint8* pCvtBuffer)
 {
@@ -43,6 +56,13 @@ bool runTest(uint8* pRAM, uint8* pCvtBuffer)
 		if (pCvtBuffer[i] != pCvtBuffer2[i]) {
 			match = false;
 		}
+	}
+
+	if (!match){
+		cout << "Expected" << endl;
+		logData(pCvtBuffer, 16, 16);
+		cout << endl << "Received" << endl;
+		logData(pCvtBuffer2, 16, 16);
 	}
 
 	delete[] pCvtBuffer2;

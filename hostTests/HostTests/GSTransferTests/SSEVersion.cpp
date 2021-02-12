@@ -201,10 +201,24 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 	uint16x8_t revr2 = vrev32q_u16(vreinterpretq_u16_u8(data.val[2]));
 	uint16x8_t row1 = vcombine_u16(vmovn_u32(vreinterpretq_u32_u16(revr0)), vmovn_u32(vreinterpretq_u32_u16(revr2)));
 
+	uint16x8_t row2 = vcombine_u16(vmovn_u32(vreinterpretq_u32_u8(data.val[1])), vmovn_u32(vreinterpretq_u32_u8(data.val[3])));
+	uint16x8_t revr1 = vrev32q_u16(vreinterpretq_u16_u8(data.val[1]));
+	uint16x8_t revr3 = vrev32q_u16(vreinterpretq_u16_u8(data.val[3]));
+	uint16x8_t row3 = vcombine_u16(vmovn_u32(vreinterpretq_u32_u16(revr1)), vmovn_u32(vreinterpretq_u32_u16(revr3)));
+
+	if ((colNum & 1) == 0){
+		row2 = vreinterpretq_u16_u32(vrev64q_u32(vreinterpretq_u32_u16(row2)));
+		row3 = vreinterpretq_u16_u32(vrev64q_u32(vreinterpretq_u32_u16(row3)));
+	}
+	else {
+		row0 = vreinterpretq_u16_u32(vrev64q_u32(vreinterpretq_u32_u16(row0)));
+		row1 = vreinterpretq_u16_u32(vrev64q_u32(vreinterpretq_u32_u16(row1)));
+	}
+
 	vst1q_u8(dest, vreinterpretq_u8_u16(row0));
 	vst1q_u8(dest+destStride, vreinterpretq_u8_u16(row1));
-	vst1q_u8(dest+2*destStride, data.val[2]);
-	vst1q_u8(dest+3*destStride, data.val[3]);
+	vst1q_u8(dest+2*destStride, vreinterpretq_u8_u16(row2));
+	vst1q_u8(dest+3*destStride, vreinterpretq_u8_u16(row3));
 }
 #else
 
