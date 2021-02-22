@@ -56,6 +56,39 @@ struct STORAGEPSMT8
 	typedef unsigned char Unit;
 };
 
+struct STORAGEPSMT4
+{
+	enum PAGEWIDTH
+	{
+		PAGEWIDTH = 128
+	};
+	enum PAGEHEIGHT
+	{
+		PAGEHEIGHT = 128
+	};
+	enum BLOCKWIDTH
+	{
+		BLOCKWIDTH = 32
+	};
+	enum BLOCKHEIGHT
+	{
+		BLOCKHEIGHT = 16
+	};
+	enum COLUMNWIDTH
+	{
+		COLUMNWIDTH = 32
+	};
+	enum COLUMNHEIGHT
+	{
+		COLUMNHEIGHT = 4
+	};
+
+	static const int m_nBlockSwizzleTable[8][4];
+	static const int m_nColumnWordTable[2][2][8];
+
+	typedef uint8 Unit;
+};
+
 template <typename Storage>
 class CPixelIndexor
 {
@@ -104,6 +137,25 @@ private:
 		// not used in this case as specialisation wins below
 	}
 
+	uint32 GetColumnAddress(unsigned int& nX, unsigned int& nY)
+	{
+		uint32 nPageNum = (nX / Storage::PAGEWIDTH) + (nY / Storage::PAGEHEIGHT) * (m_nWidth * 64) / Storage::PAGEWIDTH;
+
+		nX %= Storage::PAGEWIDTH;
+		nY %= Storage::PAGEHEIGHT;
+
+		uint32 nBlockNum = Storage::m_nBlockSwizzleTable[nY / Storage::BLOCKHEIGHT][nX / Storage::BLOCKWIDTH];
+
+		nX %= Storage::BLOCKWIDTH;
+		nY %= Storage::BLOCKHEIGHT;
+
+		uint32 nColumnNum = (nY / Storage::COLUMNHEIGHT);
+
+		nY %= Storage::COLUMNHEIGHT;
+
+		return (m_nPointer + (nPageNum * PAGESIZE) + (nBlockNum * BLOCKSIZE) + (nColumnNum * COLUMNSIZE)) & (RAMSIZE - 1);
+	}
+
 	uint32 m_nPointer;
 	uint32 m_nWidth;
 	uint8* m_pMemory;
@@ -111,6 +163,94 @@ private:
 	static bool m_pageOffsetsInitialized;
 	static uint32 m_pageOffsets[Storage::PAGEHEIGHT][Storage::PAGEWIDTH];
 };
+
+template <>
+inline uint8 CPixelIndexor<STORAGEPSMT4>::GetPixel(unsigned int nX, unsigned int nY)
+{
+	typedef STORAGEPSMT4 Storage;
+
+	uint32 nAddress;
+	unsigned int nColumnNum, nSubTable, nShiftAmount;
+
+	nColumnNum = (nY / Storage::COLUMNHEIGHT) & 0x01;
+	nAddress = GetColumnAddress(nX, nY);
+
+	nShiftAmount = (nX & 0x18);
+	nShiftAmount += (nY & 0x02) << 1;
+	nSubTable = (nY & 0x02) >> 1;
+	nSubTable ^= (nColumnNum);
+
+	nX &= 0x07;
+	nY &= 0x01;
+
+	return (uint8)(((uint32*)&m_pMemory[nAddress])[Storage::m_nColumnWordTable[nSubTable][nY][nX]] >> nShiftAmount) & 0x0F;
+}
+
+template <>
+inline void CPixelIndexor<STORAGEPSMT4>::SetPixel(unsigned int nX, unsigned int nY, uint8 nPixel)
+{
+	typedef STORAGEPSMT4 Storage;
+
+	uint32 nAddress;
+	unsigned int nColumnNum, nSubTable, nShiftAmount;
+
+	nColumnNum = (nY / Storage::COLUMNHEIGHT) & 0x01;
+	nAddress = GetColumnAddress(nX, nY);
+
+	nShiftAmount = (nX & 0x18);
+	nShiftAmount += (nY & 0x02) << 1;
+	nSubTable = (nY & 0x02) >> 1;
+	nSubTable ^= (nColumnNum);
+
+	nX &= 0x07;
+	nY &= 0x01;
+
+	uint32* pPixel = &(((uint32*)&m_pMemory[nAddress])[Storage::m_nColumnWordTable[nSubTable][nY][nX]]);
+
+	(*pPixel) &= ~(0xF << nShiftAmount);
+	(*pPixel) |= (nPixel << nShiftAmount);
+}
+
+template <>
+inline void CPixelIndexor<STORAGEPSMT4>::BuildPageOffsetTable()
+{
+	if (m_pageOffsetsInitialized) return;
+
+	typedef STORAGEPSMT4 Storage;
+
+	for (uint32 y = 0; y < Storage::PAGEHEIGHT; y++)
+	{
+		for (uint32 x = 0; x < Storage::PAGEWIDTH; x++)
+		{
+			uint32 workX = x;
+			uint32 workY = y;
+
+			uint32 blockNum = Storage::m_nBlockSwizzleTable[workY / Storage::BLOCKHEIGHT][workX / Storage::BLOCKWIDTH];
+
+			workX %= Storage::BLOCKWIDTH;
+			workY %= Storage::BLOCKHEIGHT;
+
+			uint32 columnNum = (workY / Storage::COLUMNHEIGHT);
+
+			workY %= Storage::COLUMNHEIGHT;
+
+			uint32 shiftAmount = (workX & 0x18);
+			shiftAmount += (workY & 0x02) << 1;
+			uint32 nibble = shiftAmount / 4;
+
+			uint32 subTable = (workY & 0x02) >> 1;
+			subTable ^= (columnNum & 0x01);
+
+			workX &= 0x07;
+			workY &= 0x01;
+
+			uint32 offset = ((columnNum * COLUMNSIZE) + (blockNum * BLOCKSIZE) + (Storage::m_nColumnWordTable[subTable][workY][workX] * 4)) * 2 + nibble;
+			m_pageOffsets[y][x] = offset;
+		}
+	}
+	m_pageOffsetsInitialized = true;
+}
+
 
 template <>
 inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
@@ -150,12 +290,37 @@ inline void CPixelIndexor<STORAGEPSMT8>::BuildPageOffsetTable()
 }
 
 typedef CPixelIndexor<STORAGEPSMT8> CPixelIndexorPSMT8;
+typedef CPixelIndexor<STORAGEPSMT4> CPixelIndexorPSMT4;
 
 template <typename Storage>
 bool CPixelIndexor<Storage>::m_pageOffsetsInitialized = false;
 
 template <typename Storage>
 uint32 CPixelIndexor<Storage>::m_pageOffsets[Storage::PAGEHEIGHT][Storage::PAGEWIDTH];
+
+const int STORAGEPSMT4::m_nBlockSwizzleTable[8][4] =
+{
+	{	0,	2,	8,	10,	},
+	{	1,	3,	9,	11,	},
+	{	4,	6,	12,	14,	},
+	{	5,	7,	13,	15,	},
+	{	16,	18,	24,	26,	},
+	{	17,	19,	25,	27,	},
+	{	20,	22,	28,	30,	},
+	{	21,	23,	29,	31,	}
+};
+
+const int STORAGEPSMT4::m_nColumnWordTable[2][2][8] =
+{
+	{
+		{	0,	1,	4,	5,	8,	9,	12,	13,	},
+		{	2,	3,	6,	7,	10,	11,	14,	15,	},
+	},
+	{
+		{	8,	9,	12,	13,	0,	1,	4,	5,	},
+		{	10,	11,	14,	15,	2,	3,	6,	7,	},
+	},
+};
 
 const int STORAGEPSMT8::m_nBlockSwizzleTable[4][8] =
 {
@@ -197,10 +362,16 @@ void TexUpdater_Psm48(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
-void runBaseline(uint8* pCvtBuffer, uint8* pRAM, int texW, int texH)
+void runBaselinePSMT8(int loops, uint8* pCvtBuffer, uint8* pRAM, int texW, int texH)
 {
-	for (int i = 0; i < 10000; ++i) {
+	for (int i = 0; i < loops; ++i) {
 		TexUpdater_Psm48<CPixelIndexorPSMT8>(pCvtBuffer, pRAM, 0, 1024/64, 0, 0, texW, texH);
 	}
 }
 
+void runBaselinePSMT4(int loops, uint8* pCvtBuffer, uint8* pRAM, int texW, int texH)
+{
+	for (int i = 0; i < loops; ++i) {
+		TexUpdater_Psm48<CPixelIndexorPSMT4>(pCvtBuffer, pRAM, 0, 1024 / 64, 0, 0, texW, texH);
+	}
+}
