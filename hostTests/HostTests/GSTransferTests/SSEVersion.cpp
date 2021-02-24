@@ -391,15 +391,8 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 #include <emmintrin.h>
 
 inline
-void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
-{
-	__m128i* mSrc = (__m128i*)src;
-
-	__m128i a = mSrc[0];
-	__m128i b = mSrc[1];
-	__m128i c = mSrc[2];
-	__m128i d = mSrc[3];
-
+void convertColumn8(uint8 * dest, const int destStride, int colNum, __m128i a, __m128i b, __m128i c, __m128i d)
+	{
 	__m128i* mdest = (__m128i*)dest;
 
 	__m128i temp_a = a;
@@ -451,8 +444,59 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 	mdest[mStride*3] = d;
 }
 
+inline
+void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+	__m128i* mSrc = (__m128i*)src;
+
+	__m128i a = mSrc[0];
+	__m128i b = mSrc[1];
+	__m128i c = mSrc[2];
+	__m128i d = mSrc[3];
+	convertColumn8(dest, destStride, colNum, a, b, c, d);
+}
+
 #endif
 
+inline
+void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+	__m128i* mSrc = (__m128i*)src;
+
+	__m128i a = mSrc[0];
+	__m128i b = mSrc[1];
+	__m128i c = mSrc[2];
+	__m128i d = mSrc[3];
+
+	// 4 bpp looks like 2 8bpp columns side by side.
+	// The 4pp are expanded to 8bpp.
+	// so 01 23 45 67 89 ab cd ef gh ij kl mn op qr st uv expands to
+	// 00 01 02 03 08 09 0a 0b 0g 0h 0i 0j 0o 0p 0q 0r as the first row on the left hand block.
+	
+	const __m128i mask = _mm_set1_epi32(0x0f0f0f0f);
+	__m128i lowNybbles = _mm_and_si128(a, mask);
+	__m128i highNybbles = _mm_and_si128(_mm_srli_si128(a, 4), mask);
+	a = _mm_unpacklo_epi8(lowNybbles, highNybbles);
+	__m128i a2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
+
+	lowNybbles = _mm_and_si128(b, mask);
+	highNybbles = _mm_and_si128(_mm_srli_si128(b, 4), mask);
+	b = _mm_unpacklo_epi8(lowNybbles, highNybbles);
+	__m128i b2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
+
+	lowNybbles = _mm_and_si128(c, mask);
+	highNybbles = _mm_and_si128(_mm_srli_si128(c, 4), mask);
+	c = _mm_unpacklo_epi8(lowNybbles, highNybbles);
+	__m128i c2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
+
+	lowNybbles = _mm_and_si128(d, mask);
+	highNybbles = _mm_and_si128(_mm_srli_si128(d, 4), mask);
+	d = _mm_unpacklo_epi8(lowNybbles, highNybbles);
+	__m128i d2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
+
+	convertColumn8(dest, destStride, colNum, a, b, c, d);
+	convertColumn8(dest+16, destStride, colNum, a2, b2, c2, d2);
+}
 
 void TexUpdater_PSMT8(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {
@@ -470,7 +514,6 @@ void TexUpdater_PSMT8(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 			// process an entire 16x16 block.
 			// A column (64 bytes) is 16x4 pixels and they stack vertically in a block
 			
-			// we could read an entire column in 4 xmm registers or ARM NEON registers.
 			int colNum = 0;
 			for (unsigned int coly = 0; coly < 16; coly += 4) {
 				convertColumn8(colDst + x, texWidth, src, colNum++);
@@ -489,18 +532,26 @@ void TexUpdater_PSMT4(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 	CPixelIndexorPSMT4 indexor(pRam, bufPtr, bufWidth);
 
 	uint8* dst = pCvtBuffer;
-	for (unsigned int y = 0; y < texHeight; y++)
+	for (unsigned int y = 0; y < texHeight; y += 16)
 	{
-		for (unsigned int x = 0; x < texWidth; x++)
+		for (unsigned int x = 0; x < texWidth; x += 32)
 		{
-			uint8 pixel = indexor.GetPixel(texX + x, texY + y);
-			dst[x] = pixel;
+			uint8* colDst = dst;
+			uint8* src = indexor.GetPixelAddress(texX + x, texY + y);
+
+			// process an entire 32x16 block.
+			// A column (64 bytes) is 32x4 pixels and they stack vertically in a block
+
+			int colNum = 0;
+			for (unsigned int coly = 0; coly < 16; coly += 4) {
+				convertColumn4(colDst + x, texWidth, src, colNum++);
+				src += 64;
+				colDst += texWidth * 4;
+			}
 		}
 
-		dst += texWidth;
+		dst += texWidth * 32;
 	}
-
-	//glTexSubImage2D(GL_TEXTURE_2D, 0, texX, texY, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, m_pCvtBuffer);
 }
 
 

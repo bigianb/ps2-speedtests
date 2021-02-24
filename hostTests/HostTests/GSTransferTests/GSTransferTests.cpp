@@ -77,7 +77,7 @@ bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 {
 	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
 	memset(pRAM, 0, RAMSIZE);
-	for (int i = 0; i < 256; ++i) {
+	for (int i = 0; i < 16; ++i) {
 		pRAM[i] = i;
 	}
 	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
@@ -96,9 +96,9 @@ bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 
 	if (!match) {
 		cout << "Expected" << endl;
-		logData(pCvtBuffer, 16, 16);
+		logData(pCvtBuffer, 32, 16);
 		cout << endl << "Received" << endl;
-		logData(pCvtBuffer2, 16, 16);
+		logData(pCvtBuffer2, 32, 16);
 	}
 
 	delete[] pCvtBuffer2;
