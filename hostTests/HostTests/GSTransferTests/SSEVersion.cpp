@@ -389,6 +389,7 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 
 #include <xmmintrin.h>
 #include <emmintrin.h>
+#include <tmmintrin.h>
 
 inline
 void convertColumn8(uint8 * dest, const int destStride, int colNum, __m128i a, __m128i b, __m128i c, __m128i d)
@@ -473,27 +474,36 @@ void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
 	// so 01 23 45 67 89 ab cd ef gh ij kl mn op qr st uv expands to
 	// 00 01 02 03 08 09 0a 0b 0g 0h 0i 0j 0o 0p 0q 0r as the first row on the left hand block.
 	
+	__m128i perm = _mm_setr_epi8(0, 1, 4, 5, 8, 9, 0x0c, 0x0d, 2, 3, 6, 7, 0x0a, 0x0b, 0x0e, 0x0f);
+	a = _mm_shuffle_epi8(a, perm);
+	b = _mm_shuffle_epi8(b, perm);
+	c = _mm_shuffle_epi8(c, perm);
+	d = _mm_shuffle_epi8(d, perm);
+	
+	__m128i a_orig = a;
+
 	const __m128i mask = _mm_set1_epi32(0x0f0f0f0f);
+	const __m128i shiftCount = _mm_set_epi32(0,0,0,4);
 	__m128i lowNybbles = _mm_and_si128(a, mask);
-	__m128i highNybbles = _mm_and_si128(_mm_srli_si128(a, 4), mask);
+	__m128i highNybbles = _mm_and_si128(_mm_srl_epi32(a, shiftCount), mask);
 	a = _mm_unpacklo_epi8(lowNybbles, highNybbles);
 	__m128i a2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
-
+	
 	lowNybbles = _mm_and_si128(b, mask);
-	highNybbles = _mm_and_si128(_mm_srli_si128(b, 4), mask);
+	highNybbles = _mm_and_si128(_mm_srl_epi32(b, shiftCount), mask);
 	b = _mm_unpacklo_epi8(lowNybbles, highNybbles);
 	__m128i b2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
 
 	lowNybbles = _mm_and_si128(c, mask);
-	highNybbles = _mm_and_si128(_mm_srli_si128(c, 4), mask);
+	highNybbles = _mm_and_si128(_mm_srl_epi32(c, shiftCount), mask);
 	c = _mm_unpacklo_epi8(lowNybbles, highNybbles);
 	__m128i c2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
 
 	lowNybbles = _mm_and_si128(d, mask);
-	highNybbles = _mm_and_si128(_mm_srli_si128(d, 4), mask);
+	highNybbles = _mm_and_si128(_mm_srl_epi32(d, shiftCount), mask);
 	d = _mm_unpacklo_epi8(lowNybbles, highNybbles);
 	__m128i d2 = _mm_unpackhi_epi8(lowNybbles, highNybbles);
-
+	
 	convertColumn8(dest, destStride, colNum, a, b, c, d);
 	convertColumn8(dest+16, destStride, colNum, a2, b2, c2, d2);
 }

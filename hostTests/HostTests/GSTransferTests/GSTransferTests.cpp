@@ -75,9 +75,8 @@ bool runTestPSMT8(uint8* pRAM, uint8* pCvtBuffer)
 // ensure output is as expected (matches baseline)
 bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 {
-	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
 	memset(pRAM, 0, RAMSIZE);
-	for (int i = 0; i < 16; ++i) {
+	for (int i = 0; i < 256; ++i) {
 		pRAM[i] = i;
 	}
 	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
@@ -113,7 +112,7 @@ int main()
 
 	uint8* pRAM = new uint8[RAMSIZE];
 	uint8* pCvtBuffer = new uint8[CVTBUFFERSIZE];
-
+	
 	cout << "Testing PSMT8 ... ";
 	if (runTestPSMT8(pRAM, pCvtBuffer)) {
 		cout << "passed" << endl;
@@ -133,7 +132,7 @@ int main()
 	else {
 		cout << "Failed. Perf run terminated as reconciliation test failed" << endl;
 	}
-
+	
 	cout << "Testing PSMT4 ... ";
 	if (runTestPSMT4(pRAM, pCvtBuffer)) {
 		cout << "passed" << endl;
