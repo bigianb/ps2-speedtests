@@ -129,14 +129,6 @@ public:
 		return reinterpret_cast<uint32*>(m_pageOffsets);
 	}
 
-private:
-	static void BuildPageOffsetTable()
-	{
-		if (m_pageOffsetsInitialized) return;
-
-		// not used in this case as specialisation wins below
-	}
-
 	uint32 GetColumnAddress(unsigned int& nX, unsigned int& nY)
 	{
 		uint32 nPageNum = (nX / Storage::PAGEWIDTH) + (nY / Storage::PAGEHEIGHT) * (m_nWidth * 64) / Storage::PAGEWIDTH;
@@ -154,6 +146,14 @@ private:
 		nY %= Storage::COLUMNHEIGHT;
 
 		return (m_nPointer + (nPageNum * PAGESIZE) + (nBlockNum * BLOCKSIZE) + (nColumnNum * COLUMNSIZE)) & (RAMSIZE - 1);
+	}
+
+private:
+	static void BuildPageOffsetTable()
+	{
+		if (m_pageOffsetsInitialized) return;
+
+		// not used in this case as specialisation wins below
 	}
 
 	uint32 m_nPointer;
@@ -546,21 +546,23 @@ void TexUpdater_PSMT4(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsig
 	{
 		for (unsigned int x = 0; x < texWidth; x += 32)
 		{
-			uint8* colDst = dst;
-			uint8* src = indexor.GetPixelAddress(texX + x, texY + y);
+			uint8* colDst = dst+x;
+			unsigned int nx = texX + x;
+			unsigned int ny = texY + y;
+			uint32 colAddr = indexor.GetColumnAddress(nx, ny);
+			uint8* src = pRam+colAddr;
 
 			// process an entire 32x16 block.
 			// A column (64 bytes) is 32x4 pixels and they stack vertically in a block
 
-			int colNum = 0;
-			for (unsigned int coly = 0; coly < 16; coly += 4) {
-				convertColumn4(colDst + x, texWidth, src, colNum++);
+			for (unsigned int colNum = 0; colNum < 4; ++colNum){
+				convertColumn4(colDst, texWidth, src, colNum);
 				src += 64;
 				colDst += texWidth * 4;
 			}
 		}
 
-		dst += texWidth * 32;
+		dst += texWidth * 16;
 	}
 }
 

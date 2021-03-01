@@ -26,7 +26,7 @@ enum RAMSIZE
 	RAMSIZE = 0x00400000,
 };
 
-void logData(uint8* pBuf, int w, int h)
+void logData(uint8* pBuf, int w, int h, int stride)
 {
 	uint8* p = pBuf;
 	for (int y=0; y<h; ++y){
@@ -34,6 +34,7 @@ void logData(uint8* pBuf, int w, int h)
 			cout << hex << setw(2) << (int)*p << ' ';
 			++p;
 		}
+		p += stride - w;
 		cout << endl;
 	}
 }
@@ -62,9 +63,9 @@ bool runTestPSMT8(uint8* pRAM, uint8* pCvtBuffer)
 
 	if (!match){
 		cout << "Expected" << endl;
-		logData(pCvtBuffer, 16, 16);
+		logData(pCvtBuffer, 16, 16, 128);
 		cout << endl << "Received" << endl;
-		logData(pCvtBuffer2, 16, 16);
+		logData(pCvtBuffer2, 16, 16, 128);
 	}
 
 	delete[] pCvtBuffer2;
@@ -77,27 +78,37 @@ bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 {
 	memset(pRAM, 0, RAMSIZE);
 	for (int i = 0; i < 256; ++i) {
-		pRAM[i] = i;
+		pRAM[i] = i & 0xFF;
 	}
+	for (int i = 0; i < 256; ++i) {
+		pRAM[256+i] = ~i & 0xFF;
+	}
+	const int testw = 128;
+	const int testh = 128;
+
 	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
-	runBaselinePSMT4(1, pCvtBuffer, pRAM, 32, 16);
+	runBaselinePSMT4(1, pCvtBuffer, pRAM, testw, testh);
 
 	uint8* pCvtBuffer2 = new uint8[CVTBUFFERSIZE];
 	memset(pCvtBuffer2, 0, CVTBUFFERSIZE);
-	runSSEVersionPSMT4(1, pCvtBuffer2, pRAM, 32, 16);
+	runSSEVersionPSMT4(1, pCvtBuffer2, pRAM, testw, testh);
 
 	bool match = true;
-	for (int i = 0; i < 256; ++i) {
+	for (int i = 0; i < RAMSIZE; ++i) {
 		if (pCvtBuffer[i] != pCvtBuffer2[i]) {
+			if (match) {
+				cout << "First difference at " << i << " ... (" << i % testw << ", " << i / testw << ")" << endl;
+				cout << "Expected " << (int)pCvtBuffer[i] << " but found " << (int)pCvtBuffer2[i] << endl;
+			}
 			match = false;
 		}
 	}
 
 	if (!match) {
 		cout << "Expected" << endl;
-		logData(pCvtBuffer, 32, 16);
+		logData(pCvtBuffer, 64, 32, 128);
 		cout << endl << "Received" << endl;
-		logData(pCvtBuffer2, 32, 16);
+		logData(pCvtBuffer2, 64, 32, 128);
 	}
 
 	delete[] pCvtBuffer2;
@@ -112,26 +123,6 @@ int main()
 
 	uint8* pRAM = new uint8[RAMSIZE];
 	uint8* pCvtBuffer = new uint8[CVTBUFFERSIZE];
-	
-	cout << "Testing PSMT8 ... ";
-	if (runTestPSMT8(pRAM, pCvtBuffer)) {
-		cout << "passed" << endl;
-		auto startTime = chrono::high_resolution_clock::now();
-		runBaselinePSMT8(10000, pCvtBuffer, pRAM, 512, 512);
-		auto endTime = chrono::high_resolution_clock::now();
-
-		cout << "Baseline elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
-
-		startTime = chrono::high_resolution_clock::now();
-		runSSEVersionPSMT8(10000, pCvtBuffer, pRAM, 512, 512);
-		endTime = chrono::high_resolution_clock::now();
-
-		cout << "Optimised elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
-		cout << "Done." << endl;
-	}
-	else {
-		cout << "Failed. Perf run terminated as reconciliation test failed" << endl;
-	}
 	
 	cout << "Testing PSMT4 ... ";
 	if (runTestPSMT4(pRAM, pCvtBuffer)) {
@@ -152,6 +143,28 @@ int main()
 	else {
 		cout << "Failed. Perf run terminated as reconciliation test failed" << endl;
 	}
+
+	cout << "Testing PSMT8 ... ";
+	if (runTestPSMT8(pRAM, pCvtBuffer)) {
+		cout << "passed" << endl;
+		auto startTime = chrono::high_resolution_clock::now();
+		runBaselinePSMT8(10000, pCvtBuffer, pRAM, 512, 512);
+		auto endTime = chrono::high_resolution_clock::now();
+
+		cout << "Baseline elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
+
+		startTime = chrono::high_resolution_clock::now();
+		runSSEVersionPSMT8(10000, pCvtBuffer, pRAM, 512, 512);
+		endTime = chrono::high_resolution_clock::now();
+
+		cout << "Optimised elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
+		cout << "Done." << endl;
+	}
+	else {
+		cout << "Failed. Perf run terminated as reconciliation test failed" << endl;
+	}
+	
+	
 	delete[] pRAM;
 	delete[] pCvtBuffer;
 
