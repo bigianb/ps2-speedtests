@@ -76,15 +76,18 @@ bool runTestPSMT8(uint8* pRAM, uint8* pCvtBuffer)
 // ensure output is as expected (matches baseline)
 bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 {
-	memset(pRAM, 0, RAMSIZE);
+	srand(42);
+	for (int i = 0; i < RAMSIZE; ++i) {
+		pRAM[i] = rand() & 0xFF;
+	}/*
 	for (int i = 0; i < 256; ++i) {
 		pRAM[i] = i & 0xFF;
 	}
 	for (int i = 0; i < 256; ++i) {
 		pRAM[256+i] = ~i & 0xFF;
-	}
-	const int testw = 128;
-	const int testh = 128;
+	}*/
+	const int testw = 256;
+	const int testh = 256;
 
 	memset(pCvtBuffer, 0, CVTBUFFERSIZE);
 	runBaselinePSMT4(1, pCvtBuffer, pRAM, testw, testh);
@@ -106,9 +109,9 @@ bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 
 	if (!match) {
 		cout << "Expected" << endl;
-		logData(pCvtBuffer, 64, 32, 128);
+		logData(pCvtBuffer, 32, 32, testw);
 		cout << endl << "Received" << endl;
-		logData(pCvtBuffer2, 64, 32, 128);
+		logData(pCvtBuffer2, 32, 32, testw);
 	}
 
 	delete[] pCvtBuffer2;
