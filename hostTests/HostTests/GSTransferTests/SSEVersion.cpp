@@ -351,11 +351,8 @@ const int STORAGEPSMT8x::m_nColumnWordTable[2][2][8] =
 #include <arm_neon.h>
 
 inline
-void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
+void convertColumn8(uint8x16x4_t data, uint8* dest, const int destStride, int colNum)
 {
-	// This sucks in the entire column and de-interleaves it
-	uint8x16x4_t data = vld4q_u8(src);
-
 	// https://developer.arm.com/documentation/den0018/a/NEON-Intrinsics-Reference/Intrinsics-type-conversion/VCOMBINE
 
 	// VCOMBINE joins two 64-bit vectors into a single 128-bit vector. 
@@ -385,6 +382,21 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 	vst1q_u8(dest+2*destStride, vreinterpretq_u8_u16(row2));
 	vst1q_u8(dest+3*destStride, vreinterpretq_u8_u16(row3));
 }
+
+inline
+void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+	// This sucks in the entire column and de-interleaves it
+	uint8x16x4_t data = vld4q_u8(src);
+	convertColumn8(data, dest, destStride, colNum);
+}
+
+inline
+void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
+{
+
+}
+
 #else
 
 #include <xmmintrin.h>
@@ -457,8 +469,6 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 	convertColumn8(dest, destStride, colNum, a, b, c, d);
 }
 
-#endif
-
 inline
 void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
 {
@@ -507,6 +517,8 @@ void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
 	convertColumn8(dest, destStride, colNum, a, b, c, d);
 	convertColumn8(dest+16, destStride, colNum, a2, b2, c2, d2);
 }
+
+#endif
 
 void TexUpdater_PSMT8(uint8* pCvtBuffer, uint8* pRam, unsigned int bufPtr, unsigned int bufWidth, unsigned int texX, unsigned int texY, unsigned int texWidth, unsigned int texHeight)
 {

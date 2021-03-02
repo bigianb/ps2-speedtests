@@ -151,7 +151,7 @@ int main()
 		runBaselinePSMT8(10000, pCvtBuffer, pRAM, 512, 512);
 		auto endTime = chrono::high_resolution_clock::now();
 
-		cout << "Baseline elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
+		cout << dec << "Baseline elapsed: " << chrono::duration_cast<chrono::microseconds>(endTime - startTime).count() << " us" << endl;
 
 		startTime = chrono::high_resolution_clock::now();
 		runSSEVersionPSMT8(10000, pCvtBuffer, pRAM, 512, 512);
