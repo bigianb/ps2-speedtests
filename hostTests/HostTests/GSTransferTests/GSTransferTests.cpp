@@ -80,12 +80,12 @@ bool runTestPSMT4(uint8* pRAM, uint8* pCvtBuffer)
 	for (int i = 0; i < RAMSIZE; ++i) {
 		pRAM[i] = rand() & 0xFF;
 	}
-	for (int i = 0; i < 256; ++i) {
+	/*for (int i = 0; i < 256; ++i) {
 		pRAM[i] = i & 0xFF;
 	}
 	for (int i = 0; i < 256; ++i) {
 		pRAM[256+i] = ~i & 0xFF;
-	}
+	}*/
 	const int testw = 256;
 	const int testh = 256;
 
