@@ -394,7 +394,34 @@ void convertColumn8(uint8* dest, const int destStride, uint8* src, int colNum)
 inline
 void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
 {
+	// https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/intrinsics
 
+	uint8x16x4_t data = vld4q_u8(src);
+
+	const auto mask = vdupq_n_u8(0x0F);
+
+	auto high_nybbles = vshrq_n_u8(data.val[0], 4);
+	auto lo_nybbles = vandq_u8(data.val[0], mask);
+
+	uint8x16x4_t col8Data;
+	col8Data.val[0] = lo_nybbles;
+	col8Data.val[1] = high_nybbles;
+	
+	high_nybbles = vshrq_n_u8(data.val[1], 4);
+	lo_nybbles = vandq_u8(data.val[1], mask);
+	col8Data.val[2] = lo_nybbles;
+	col8Data.val[3] = high_nybbles;
+	convertColumn8(col8Data, dest, destStride, colNum);
+
+	high_nybbles = vshrq_n_u8(data.val[2], 4);
+	lo_nybbles = vandq_u8(data.val[2], mask);
+	col8Data.val[0] = lo_nybbles;
+	col8Data.val[1] = high_nybbles;
+	high_nybbles = vshrq_n_u8(data.val[3], 4);
+	lo_nybbles = vandq_u8(data.val[3], mask);
+	col8Data.val[2] = lo_nybbles;
+	col8Data.val[3] = high_nybbles;
+	convertColumn8(col8Data, dest+16, destStride, colNum);
 }
 
 #else
@@ -482,7 +509,7 @@ void convertColumn4(uint8* dest, const int destStride, uint8* src, int colNum)
 	// 4 bpp looks like 2 8bpp columns side by side.
 	// The 4pp are expanded to 8bpp.
 	// so 01 23 45 67 89 ab cd ef gh ij kl mn op qr st uv expands to
-	// 00 01 02 03 08 09 0a 0b 0g 0h 0i 0j 0o 0p 0q 0r as the first row on the left hand block.
+	//    00 01 02 03 08 09 0a 0b 0g 0h 0i 0j 0o 0p 0q 0r as the first row on the left hand block.
 	
 	__m128i perm = _mm_setr_epi8(0, 1, 4, 5, 8, 9, 0x0c, 0x0d, 2, 3, 6, 7, 0x0a, 0x0b, 0x0e, 0x0f);
 	a = _mm_shuffle_epi8(a, perm);
